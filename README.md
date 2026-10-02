@@ -31,8 +31,13 @@ node screenshot.js capture https://example.com --init ./accept-cookies.js --out 
 node screenshot.js compare baseline.png after.png
 
 # Write a visual diff and fail if >1% of pixels differ
-node screenshot.js compare baseline.png after.png --out diff.png --threshold 0.01
+node screenshot.js compare baseline.png after.png --out diff.png --threshold 1
+
+# Exact color match (100 = most sensitive; default is 90)
+node screenshot.js compare baseline.png after.png --out diff.png --sensitivity 100
 ```
+
+`--threshold` is a percent: exit `1` if `percentDifferent` is greater. `--sensitivity` is 0–100 color pickiness (`100` = any color difference counts; `0` = ignore color differences).
 
 ### Init scripts (`--init`)
 
@@ -101,7 +106,7 @@ docker run --rm -v "$PWD/screenshots:/work" urlund/screenshotjs \
 
 # Visual diff + fail if >1% different
 docker run --rm -v "$PWD/screenshots:/work" urlund/screenshotjs \
-  compare baseline.png after.png --out diff.png --threshold 0.01
+  compare baseline.png after.png --out diff.png --threshold 1
 ```
 
 To capture a site running on your host machine (e.g. local WordPress):
@@ -128,7 +133,7 @@ docker compose run -q --rm screenshot \
   capture https://example.com --viewport 1024x768
 
 docker compose run -q --rm screenshot \
-  compare baseline.png after.png --out diff.png --threshold 0.01
+  compare baseline.png after.png --out diff.png --threshold 1
 
 # Local WordPress on the host
 docker compose run -q --rm screenshot \
@@ -141,3 +146,41 @@ For `--init`, uncomment the init-script volume in `docker-compose.yml` (or add y
 docker compose run -q --rm screenshot \
   capture https://example.com --init accept-cookies.js --out baseline.png
 ```
+
+## Example
+
+The [`examples/`](examples/) folder includes two small HTML pages (`demo-before.html` and `demo-after.html`) that mimic a UI before and after a theme change. Capture both at the same viewport size, then compare:
+
+```bash
+# Default sensitivity (90) — pale background shifts may not register
+node screenshot.js compare examples/before.png examples/after.png --out examples/diff-default.png
+
+# Max sensitivity — catches pale background shifts
+node screenshot.js compare examples/before.png examples/after.png --out examples/diff-sensitive.png --sensitivity 100
+```
+
+Sample output (default):
+
+```
+diffPixels: 9359
+totalPixels: 256000
+percentDifferent: 3.66%
+```
+
+Sample output (`--sensitivity 100`):
+
+```
+diffPixels: 181565
+totalPixels: 256000
+percentDifferent: 70.92%
+```
+
+| Before | After |
+| --- | --- |
+| ![Before](examples/before.png) | ![After](examples/after.png) |
+
+| Diff (default) | Diff (`--sensitivity 100`) |
+| --- | --- |
+| ![Diff default](examples/diff-default.png) | ![Diff sensitive](examples/diff-sensitive.png) |
+
+The first diff highlights larger changes (heading copy, button color, card border). The second also flags the pale gray-vs-mint background because `--sensitivity 100` treats any color difference as a mismatch.

@@ -2,7 +2,7 @@
 /**
  * Usage:
  *   node screenshot.js capture <url> [--out <path>] [--viewport [WxH]] [--init <file.js>]
- *   node screenshot.js compare <image1> <image2> [--out <path>] [--threshold <0-1>]
+ *   node screenshot.js compare <image1> <image2> [--out <path>] [--threshold <0-100>] [--sensitivity <0-100>]
  *
  * capture  — full-page by default; --viewport (optionally WxH) takes a viewport crop;
  *            --init runs a Playwright page script after load, before the screenshot
@@ -16,11 +16,13 @@ const { PNG } = require('pngjs');
 const pixelmatch = require('pixelmatch').default || require('pixelmatch');
 
 const DEFAULT_VIEWPORT = { width: 1280, height: 720 };
+/** Default --sensitivity (0–100). Maps to pixelmatch 0.1. */
+const DEFAULT_SENSITIVITY = 90;
 
 function usage(exitCode = 1) {
   console.error(`Usage:
   node screenshot.js capture <url> [--out <path>] [--viewport [WxH]] [--init <file.js>]
-  node screenshot.js compare <image1> <image2> [--out <path>] [--threshold <0-1>]`);
+  node screenshot.js compare <image1> <image2> [--out <path>] [--threshold <0-100>] [--sensitivity <0-100>]`);
   process.exit(exitCode);
 }
 
@@ -44,15 +46,27 @@ function parseArgs(argv) {
     } else if (arg === '--threshold') {
       const value = args[++i];
       if (value === undefined || value.startsWith('--')) {
-        console.error('Error: --threshold requires a number (e.g. 0.01)');
+        console.error('Error: --threshold requires a number (e.g. 1)');
         process.exit(1);
       }
       const n = Number(value);
-      if (Number.isNaN(n) || n < 0 || n > 1) {
-        console.error('Error: --threshold must be a number between 0 and 1');
+      if (Number.isNaN(n) || n < 0 || n > 100) {
+        console.error('Error: --threshold must be a number between 0 and 100');
         process.exit(1);
       }
       flags.threshold = n;
+    } else if (arg === '--sensitivity') {
+      const value = args[++i];
+      if (value === undefined || value.startsWith('--')) {
+        console.error('Error: --sensitivity requires a number (e.g. 90)');
+        process.exit(1);
+      }
+      const n = Number(value);
+      if (Number.isNaN(n) || n < 0 || n > 100) {
+        console.error('Error: --sensitivity must be a number between 0 and 100');
+        process.exit(1);
+      }
+      flags.sensitivity = n;
     } else if (arg === '--viewport') {
       const next = args[i + 1];
       if (next && !next.startsWith('--') && /^\d+x\d+$/i.test(next)) {
@@ -196,13 +210,18 @@ function compare(image1, image2, flags) {
   const totalPixels = width * height;
   const diff = new PNG({ width, height });
 
+  const sensitivity =
+    flags.sensitivity !== undefined ? flags.sensitivity : DEFAULT_SENSITIVITY;
+  // 100 = exact match (pixelmatch 0); 0 = ignore color diffs (pixelmatch 1)
+  const colorThreshold = 1 - sensitivity / 100;
+
   const diffPixels = pixelmatch(
     img1.data,
     img2.data,
     diff.data,
     width,
     height,
-    { threshold: 0.1 }
+    { threshold: colorThreshold }
   );
 
   const percent = totalPixels === 0 ? 0 : (diffPixels / totalPixels) * 100;
@@ -218,8 +237,7 @@ function compare(image1, image2, flags) {
   }
 
   if (flags.threshold !== undefined) {
-    const ratio = totalPixels === 0 ? 0 : diffPixels / totalPixels;
-    if (ratio > flags.threshold) process.exit(1);
+    if (percent > flags.threshold) process.exit(1);
   }
 }
 
