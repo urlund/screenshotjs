@@ -40,7 +40,7 @@ node screenshot.js compare baseline.png after.png --out diff.png --sensitivity 1
 node screenshot.js compare baseline.png after.png --out diff.png --threshold 1 --json
 ```
 
-`--threshold` is a percent: exit `1` if `Different` is greater. `--sensitivity` is 0–100 color pickiness (`100` = any color difference counts; `0` = ignore color differences). `--json` prints one JSON object instead of the human-readable summary.
+`--threshold` is a percent: exit `1` if `Different/percentDifferent` is greater. `--sensitivity` is 0–100 color pickiness (`100` = any color difference counts; `0` = ignore color differences). `--json` prints one JSON object instead of the human-readable summary.
 
 ### Init scripts (`--init`)
 
