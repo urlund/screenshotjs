@@ -1,0 +1,13 @@
+services:
+  screenshot:
+    image: urlund/screenshotjs
+    # Or build locally instead of pulling:
+    # build: .
+    working_dir: /work
+    volumes:
+      - ./screenshots:/work
+      # Mount init scripts into /work (optional)
+      # - ./accept-cookies.js:/work/accept-cookies.js:ro
+      # - ./scripts:/work/scripts:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
