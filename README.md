@@ -160,6 +160,9 @@ node screenshot.js compare examples/before.png examples/after.png --out examples
 
 # Max sensitivity — catches pale background shifts
 node screenshot.js compare examples/before.png examples/after.png --out examples/diff-sensitive.png --sensitivity 100
+
+# JSON result (exits 1 when over threshold)
+node screenshot.js compare examples/before.png examples/after.png --out examples/diff-default.png --threshold 1 --json
 ```
 
 Sample output (default):
@@ -180,6 +183,22 @@ Compared 640×400 (256,000 px)
   Matching:      74,435 px  (29.08%)
   Sensitivity: 100
   Diff written: examples/diff-sensitive.png
+```
+
+Sample output (`--json` with `--threshold 1`):
+
+```json
+{
+  "diffPixels": 9359,
+  "totalPixels": 256000,
+  "percentDifferent": 3.66,
+  "width": 640,
+  "height": 400,
+  "sensitivity": 90,
+  "passed": false,
+  "threshold": 1,
+  "out": "examples/diff-default.png"
+}
 ```
 
 | Before | After |
