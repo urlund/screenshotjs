@@ -35,9 +35,12 @@ node screenshot.js compare baseline.png after.png --out diff.png --threshold 1
 
 # Exact color match (100 = most sensitive; default is 90)
 node screenshot.js compare baseline.png after.png --out diff.png --sensitivity 100
+
+# Machine-readable result
+node screenshot.js compare baseline.png after.png --out diff.png --threshold 1 --json
 ```
 
-`--threshold` is a percent: exit `1` if `percentDifferent` is greater. `--sensitivity` is 0–100 color pickiness (`100` = any color difference counts; `0` = ignore color differences).
+`--threshold` is a percent: exit `1` if `percentDifferent` is greater. `--sensitivity` is 0–100 color pickiness (`100` = any color difference counts; `0` = ignore color differences). `--json` prints one JSON object instead of the human-readable summary.
 
 ### Init scripts (`--init`)
 
@@ -162,17 +165,21 @@ node screenshot.js compare examples/before.png examples/after.png --out examples
 Sample output (default):
 
 ```
-diffPixels: 9359
-totalPixels: 256000
-percentDifferent: 3.66%
+Compared 640×400 (256,000 px)
+  Different:      9,359 px  (3.66%)
+  Matching:     246,641 px  (96.34%)
+  Sensitivity: 90
+  Diff written: examples/diff-default.png
 ```
 
 Sample output (`--sensitivity 100`):
 
 ```
-diffPixels: 181565
-totalPixels: 256000
-percentDifferent: 70.92%
+Compared 640×400 (256,000 px)
+  Different:    181,565 px  (70.92%)
+  Matching:      74,435 px  (29.08%)
+  Sensitivity: 100
+  Diff written: examples/diff-sensitive.png
 ```
 
 | Before | After |

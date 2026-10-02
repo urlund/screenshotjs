@@ -2,11 +2,11 @@
 /**
  * Usage:
  *   node screenshot.js capture <url> [--out <path>] [--viewport [WxH]] [--init <file.js>]
- *   node screenshot.js compare <image1> <image2> [--out <path>] [--threshold <0-100>] [--sensitivity <0-100>]
+ *   node screenshot.js compare <image1> <image2> [--out <path>] [--threshold <0-100>] [--sensitivity <0-100>] [--json]
  *
  * capture  — full-page by default; --viewport (optionally WxH) takes a viewport crop;
  *            --init runs a Playwright page script after load, before the screenshot
- * compare  — prints diff stats; --out writes a red-highlight diff PNG
+ * compare  — prints diff stats; --out writes a red-highlight diff PNG; --json prints JSON
  */
 
 const fs = require('fs');
@@ -22,7 +22,7 @@ const DEFAULT_SENSITIVITY = 90;
 function usage(exitCode = 1) {
   console.error(`Usage:
   node screenshot.js capture <url> [--out <path>] [--viewport [WxH]] [--init <file.js>]
-  node screenshot.js compare <image1> <image2> [--out <path>] [--threshold <0-100>] [--sensitivity <0-100>]`);
+  node screenshot.js compare <image1> <image2> [--out <path>] [--threshold <0-100>] [--sensitivity <0-100>] [--json]`);
   process.exit(exitCode);
 }
 
@@ -67,6 +67,8 @@ function parseArgs(argv) {
         process.exit(1);
       }
       flags.sensitivity = n;
+    } else if (arg === '--json') {
+      flags.json = true;
     } else if (arg === '--viewport') {
       const next = args[i + 1];
       if (next && !next.startsWith('--') && /^\d+x\d+$/i.test(next)) {
@@ -189,6 +191,10 @@ function loadPng(filePath) {
   return PNG.sync.read(fs.readFileSync(filePath));
 }
 
+function formatCount(n) {
+  return n.toLocaleString('en-US');
+}
+
 function compare(image1, image2, flags) {
   if (!image1 || !image2) {
     console.error('Error: compare requires <image1> <image2>');
@@ -224,11 +230,12 @@ function compare(image1, image2, flags) {
     { threshold: colorThreshold }
   );
 
-  const percent = totalPixels === 0 ? 0 : (diffPixels / totalPixels) * 100;
-
-  console.log(`diffPixels: ${diffPixels}`);
-  console.log(`totalPixels: ${totalPixels}`);
-  console.log(`percentDifferent: ${percent.toFixed(2)}%`);
+  const percent =
+    totalPixels === 0 ? 0 : (diffPixels / totalPixels) * 100;
+  const matchPixels = totalPixels - diffPixels;
+  const matchPercent = totalPixels === 0 ? 0 : (matchPixels / totalPixels) * 100;
+  const passed =
+    flags.threshold === undefined ? true : percent <= flags.threshold;
 
   if (flags.out) {
     const dir = path.dirname(flags.out);
@@ -236,9 +243,39 @@ function compare(image1, image2, flags) {
     fs.writeFileSync(flags.out, PNG.sync.write(diff));
   }
 
-  if (flags.threshold !== undefined) {
-    if (percent > flags.threshold) process.exit(1);
+  if (flags.json) {
+    const result = {
+      diffPixels,
+      totalPixels,
+      percentDifferent: Number(percent.toFixed(2)),
+      width,
+      height,
+      sensitivity,
+      passed,
+    };
+    if (flags.threshold !== undefined) result.threshold = flags.threshold;
+    if (flags.out) result.out = flags.out;
+    console.log(JSON.stringify(result));
+  } else {
+    console.log(
+      `Compared ${width}×${height} (${formatCount(totalPixels)} px)`
+    );
+    console.log(
+      `  Different:  ${formatCount(diffPixels).padStart(9)} px  (${percent.toFixed(2)}%)`
+    );
+    console.log(
+      `  Matching:   ${formatCount(matchPixels).padStart(9)} px  (${matchPercent.toFixed(2)}%)`
+    );
+    console.log(`  Sensitivity: ${sensitivity}`);
+    if (flags.out) console.log(`  Diff written: ${flags.out}`);
+    if (flags.threshold !== undefined && !passed) {
+      console.error(
+        `Failed: ${percent.toFixed(2)}% > threshold ${flags.threshold}%`
+      );
+    }
   }
+
+  if (!passed) process.exit(1);
 }
 
 async function main() {
